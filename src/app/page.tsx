@@ -1,69 +1,23 @@
-import Image from "next/image";
+const Arrow = () => <span aria-hidden="true">↗</span>;
+const Mark = () => <span className="relative grid h-8 w-8 place-items-center overflow-hidden rounded-[10px] bg-[#251c40]"><span className="h-5 w-5 rounded-full border-[3px] border-[#a6f6d6]" /><span className="absolute h-2 w-5 rotate-[-38deg] rounded-full bg-[#a992ff]" /></span>;
+const Brand = () => <span className="flex items-center gap-2.5 text-[17px] font-bold tracking-[-.045em]"><Mark />swapgap<span className="-ml-2 text-[#7259df]">.ai</span></span>;
+const Face = ({ children, mint = false }: { children: string; mint?: boolean }) => <span className={mint ? "grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[#d7f6e9] text-sm font-bold text-[#13775e]" : "grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[#e5deff] text-sm font-bold text-[#6047bd]"}>{children}</span>;
 
 export default function Home() {
-  return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+  return <main className="overflow-hidden bg-[#f8f7f2] text-[#1c1830]">
+    <nav className="mx-auto flex max-w-[1240px] items-center justify-between px-5 py-5 sm:px-8 lg:px-10" aria-label="Main navigation"><a href="#top" aria-label="SwapGap AI home"><Brand /></a><div className="hidden gap-8 text-sm font-medium text-[#565267] md:flex"><a className="nav-link" href="#how-it-works">How it works</a><a className="nav-link" href="#why-swapgap">Why SwapGap</a><a className="nav-link" href="#example-swap">Example swap</a></div><a href="#how-it-works" className="hidden rounded-full bg-[#251c40] px-5 py-2.5 text-sm font-semibold text-white transition-transform hover:-translate-y-0.5 sm:inline-flex">Start exploring <span className="ml-2"><Arrow /></span></a><details className="relative md:hidden"><summary className="grid h-10 w-10 cursor-pointer place-items-center rounded-full border border-[#ded9eb] bg-white marker:content-none" aria-label="Open navigation">☰</summary><div className="absolute right-0 top-12 z-30 flex w-52 flex-col gap-1 rounded-2xl border border-[#e4e0ec] bg-white p-2 shadow-xl"><a className="rounded-xl px-3 py-2 text-sm hover:bg-[#f4f1ff]" href="#how-it-works">How it works</a><a className="rounded-xl px-3 py-2 text-sm hover:bg-[#f4f1ff]" href="#why-swapgap">Why SwapGap</a><a className="rounded-xl px-3 py-2 text-sm hover:bg-[#f4f1ff]" href="#example-swap">Example swap</a></div></details></nav>
+    <section id="top" className="relative mx-auto max-w-[1240px] px-5 pb-20 pt-12 sm:px-8 sm:pt-16 lg:px-10 lg:pb-28 lg:pt-24"><div className="hero-orb hero-orb-one" /><div className="hero-orb hero-orb-two" /><div className="relative grid items-center gap-12 lg:grid-cols-[.94fr_1.06fr]"><div className="relative z-10 max-w-[620px]"><p className="animate-in mb-7 inline-flex items-center gap-2 rounded-full border border-[#dcd5ff] bg-[#f1eeff] px-3 py-1.5 text-xs font-bold uppercase tracking-[.12em] text-[#6149c4]"><span className="h-1.5 w-1.5 rounded-full bg-[#6e54df]" />A better way to trade talent</p><h1 className="animate-in delay-1 text-balance text-[clamp(3.55rem,7vw,6.7rem)] font-[800] leading-[.88] tracking-[-.075em]">Your Skills<br />Are <span className="relative text-[#7056de]">Currency<span className="absolute -bottom-1 left-1 h-1.5 w-[94%] rounded-full bg-[#a6f6d6]" /></span>.</h1><p className="animate-in delay-2 mt-8 text-xl font-medium text-[#3b374b] sm:text-2xl">Trade what you know. Get what you need.</p><p className="animate-in delay-3 mt-4 max-w-lg leading-7 text-[#6a6578]">Meet your perfect skill match, negotiate smarter with AI, and let PayPal handle the difference.</p><div className="animate-in delay-4 mt-9 flex flex-col gap-3 sm:flex-row"><a href="#how-it-works" className="inline-flex items-center justify-center rounded-full bg-[#7259df] px-6 py-3.5 text-sm font-bold text-white shadow-[0_10px_22px_rgba(105,78,211,.24)] transition-all hover:-translate-y-0.5">Explore how it works <span className="ml-2"><Arrow /></span></a><a href="#example-swap" className="inline-flex items-center justify-center rounded-full border border-[#dcd7e6] bg-white/70 px-6 py-3.5 text-sm font-bold">See a skill swap</a></div></div>
+      <div className="animate-in delay-2 relative min-h-[465px] overflow-hidden rounded-[34px] border border-[#e4dfeb] bg-[#eeecf5] p-4 shadow-[0_28px_60px_rgba(42,31,74,.13)] sm:min-h-[525px] sm:p-6"><div className="absolute inset-0 opacity-70 [background-image:radial-gradient(#c9c0dd_1px,transparent_1px)] [background-size:18px_18px]" /><div className="relative flex justify-between"><span className="rounded-full bg-white/80 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.12em] text-[#6a627e]">Live exchange map</span><span className="text-xs font-bold text-[#3c9278]">● 92% mutual fit</span></div><svg className="absolute left-[12%] top-[24%] h-[47%] w-[76%]" viewBox="0 0 400 240" fill="none" aria-hidden="true"><path d="M40 80C100 15 180 20 230 95s85 55 132 6" stroke="#8069e7" strokeWidth="2" strokeDasharray="6 7" /><path d="M350 158c-75 65-155 45-198-13S78 102 35 154" stroke="#52c7a3" strokeWidth="2" strokeDasharray="6 7" /></svg>
+        <article className="card-float absolute left-4 top-[17%] w-[57%] max-w-[286px] rounded-[22px] border border-white/90 bg-white p-4 shadow-[0_14px_25px_rgba(42,31,74,.13)] sm:left-7 sm:p-5"><div className="flex gap-3"><Face>A</Face><div><b>Aarav Mehta</b><p className="text-[11px] text-[#766f83]">Brand designer · Mumbai</p></div></div><div className="mt-4 rounded-xl bg-[#f2efff] p-3"><p className="text-[9px] font-bold uppercase text-[#7965ce]">Offers</p><b className="text-sm text-[#302851]">Logo Design <span className="float-right text-[#6a52d7]">$100</span></b></div><p className="mt-3 text-xs text-[#625b70]"><b>Needs</b> · Website Copywriting</p></article>
+        <article className="card-float-reverse absolute right-4 top-[41%] w-[57%] max-w-[286px] rounded-[22px] border border-white/90 bg-white p-4 shadow-[0_14px_25px_rgba(42,31,74,.13)] sm:right-7 sm:p-5"><div className="flex gap-3"><Face mint>S</Face><div><b>Sara Chen</b><p className="text-[11px] text-[#766f83]">Copywriter · Singapore</p></div></div><div className="mt-4 rounded-xl bg-[#e9faf3] p-3"><p className="text-[9px] font-bold uppercase text-[#27866c]">Offers</p><b className="text-sm text-[#263f38]">Web Copy <span className="float-right text-[#238264]">$85</span></b></div><p className="mt-3 text-xs text-[#625b70]"><b>Needs</b> · Logo Design</p></article>
+        <div className="absolute bottom-5 left-1/2 w-[82%] -translate-x-1/2 rounded-2xl border border-[#d8d0f8] bg-[#272044] p-3.5 text-white shadow-xl sm:bottom-7 sm:w-[70%]"><div className="flex justify-between text-[10px] font-bold uppercase tracking-[.12em] text-[#c7bcff]">✦ Suggested settlement <span className="rounded-full bg-[#a6f6d6] px-2 py-1 text-[#193f36]">+$15</span></div><p className="mt-2 text-sm font-bold">Sara pays Aarav <span className="font-medium text-[#b8b1c8]">via PayPal</span></p><p className="mt-1 text-[10px] text-[#a9a3ba]">Subject to mutual agreement</p></div></div></div></section>
+    <section id="how-it-works" className="border-y border-[#e4e0d8] bg-[#fdfcf9] py-20 sm:py-28"><div className="mx-auto max-w-[1240px] px-5 sm:px-8 lg:px-10"><p className="eyebrow">The exchange, reimagined</p><div className="flex flex-col justify-between gap-5 md:flex-row md:items-end"><h2 className="section-title mt-4 max-w-xl">A fair trade can start with one good introduction.</h2><p className="max-w-xs text-sm leading-6 text-[#706b79]">From a capability you have to a capability you need, the path stays clear.</p></div><div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-4"><Step n="01" title="List your skills" copy="Share what you do brilliantly—and what would move your work forward." tint="bg-[#ede9ff] text-[#634ac7]" /><Step n="02" title="Discover mutual matches" copy="Our matching looks for a real two-way fit, not just another lead." tint="bg-[#e1f8ee] text-[#197b61]" /><Step n="03" title="Negotiate with AI" copy="See a balanced proposal you can shape together before anything is agreed." tint="bg-[#fff0d8] text-[#a6651d]" /><Step n="04" title="Settle the gap" copy="Use PayPal only for the agreed difference." tint="bg-[#22203a] text-white" /></div></div></section>
+    <section id="example-swap" className="py-20 sm:py-28"><div className="mx-auto grid max-w-[1240px] gap-12 px-5 sm:px-8 lg:grid-cols-[.72fr_1.28fr] lg:items-center lg:px-10"><div><p className="eyebrow">One clear proposal</p><h2 className="section-title mt-4">Less guesswork. More good work.</h2><p className="mt-5 max-w-sm leading-7 text-[#706b79]">A shared starting point turns the awkward value conversation into an open, useful one.</p><a href="#why-swapgap" className="mt-7 inline-flex gap-2 text-sm font-bold text-[#6248cf]">Why it feels different <Arrow /></a></div><div className="rounded-[30px] border border-[#ded8e8] bg-[#fcfbff] p-5 shadow-[0_24px_55px_rgba(45,34,83,.08)]"><div className="flex justify-between border-b border-[#e9e5f0] pb-4"><span className="font-bold">✦ Match proposal <small className="ml-2 font-normal text-[#837c92]">Illustrative example · Not a live AI system</small></span><span className="text-xs font-bold text-[#197a61]">92% fit</span></div><div className="grid gap-3 py-5 sm:grid-cols-3"><Proposal name="Aarav" skill="Logo Design" value="$100" /><div className="grid place-items-center text-2xl text-[#7259df]">↔</div><Proposal name="Sara" skill="Website Copywriting" value="$85" mint /></div><div className="grid gap-4 border-t border-[#e9e5f0] pt-5 sm:grid-cols-[1.4fr_.8fr]"><p className="rounded-2xl bg-[#f3f0ff] p-4 text-sm leading-6 text-[#514a63]"><b className="text-[#5e48b7]">✦ AI&apos;s perspective</b><br />Both services have a complementary scope. A <b>$15 top-up</b> keeps the exchange balanced.</p><p className="rounded-2xl bg-[#26203f] p-4 text-white"><small className="font-bold uppercase tracking-[.12em] text-[#bdb2ef]">Proposed difference</small><b className="mt-2 block text-3xl">$15</b><small className="text-[#bdb7ca]">Sara → Aarav via PayPal</small></p></div></div></div></section>
+    <section id="why-swapgap" className="bg-[#211b37] py-20 text-white sm:py-28"><div className="mx-auto max-w-[1240px] px-5 sm:px-8 lg:px-10"><p className="eyebrow text-[#adf3d7]">Built for balance</p><h2 className="section-title mt-4 max-w-2xl text-white">The kind of marketplace your skills deserve.</h2><div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-3"><Feature className="bg-[#7058db] lg:col-span-2" title="AI-powered matching" copy="Find reciprocal opportunity, not just a directory of profiles." mark="✦" /><Feature className="bg-[#e0f8ed] text-[#1e4037]" title="Smart negotiation" copy="A calm, shared starting point for talking value." mark="↗" /><Feature className="bg-[#31294d]" title="Fair, transparent agreements" copy="Everyone sees the same proposal—and everyone has a say." mark="✓" /><Feature className="bg-[#f7eddd] text-[#302543] lg:col-span-2" title="PayPal-powered settlement" copy="Settle only the difference, only when both people agree." mark="$15" /></div></div></section>
+    <section className="relative overflow-hidden py-24 text-center sm:py-32"><div className="absolute left-1/2 top-0 h-[420px] w-[600px] -translate-x-1/2 rounded-full bg-[#e5ddff] blur-3xl opacity-65" /><div className="relative mx-auto max-w-3xl px-5"><p className="eyebrow">Start with what you know</p><h2 className="section-title mt-5">Your next opportunity might be someone else&apos;s skill.</h2><p className="mx-auto mt-5 max-w-lg leading-7 text-[#706b79]">Make your expertise go further—and discover what collaboration can unlock.</p><a href="#how-it-works" className="mt-9 inline-flex rounded-full bg-[#7259df] px-6 py-3.5 text-sm font-bold text-white shadow-[0_10px_22px_rgba(105,78,211,.24)]">See how SwapGap works <span className="ml-2"><Arrow /></span></a></div></section>
+    <footer className="border-t border-[#e4e0d8]"><div className="mx-auto flex max-w-[1240px] flex-col gap-5 px-5 py-8 sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:px-10"><a href="#top"><Brand /></a><p className="text-sm text-[#787283]">Where expertise becomes exchange.</p><p className="text-xs text-[#968f9d]">© 2026 SwapGap AI</p></div></footer>
+  </main>;
 }
+function Step({ n, title, copy, tint }: { n: string; title: string; copy: string; tint: string }) { return <article className="group rounded-[24px] border border-[#e7e3dc] bg-white p-6 transition-transform hover:-translate-y-1"><b className={"grid h-11 w-11 place-items-center rounded-2xl text-sm " + tint}>{n}</b><h3 className="mt-7 text-lg font-bold">{title}</h3><p className="mt-2 text-sm leading-6 text-[#706b79]">{copy}</p><span className="mt-6 block h-px w-8 bg-[#cfc8df] transition-all group-hover:w-full" /></article> }
+function Proposal({ name, skill, value, mint = false }: { name: string; skill: string; value: string; mint?: boolean }) { return <div className={mint ? "rounded-2xl bg-[#e9f9f2] p-4" : "rounded-2xl bg-[#f1effa] p-4"}><div className="flex gap-2"><Face mint={mint}>{name[0]}</Face><span><b className="text-sm">{name}</b><small className="block text-[#716b80]">{skill}</small></span></div><b className="mt-4 block text-2xl">{value}</b></div> }
+function Feature({ className, title, copy, mark }: { className: string; title: string; copy: string; mark: string }) { return <article className={"min-h-[225px] rounded-[28px] p-6 " + className}><b className="grid h-10 w-10 place-items-center rounded-2xl bg-white/20 text-lg">{mark}</b><h3 className="mt-8 text-xl font-bold">{title}</h3><p className="mt-3 max-w-sm text-sm leading-6 opacity-80">{copy}</p></article> }

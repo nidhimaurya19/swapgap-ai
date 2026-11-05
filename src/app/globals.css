@@ -1,9 +1,6 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+:root { --background: #f8f7f2; --foreground: #1c1830; }
 
 @theme inline {
   --color-background: var(--background);
@@ -12,15 +9,23 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--background); color: var(--foreground); font-family: Arial, Helvetica, sans-serif; }
+::selection { background: #dcd3ff; color: #201b34; }
+summary::-webkit-details-marker { display: none; }
+.nav-link { transition: color 180ms ease; }
+.nav-link:hover { color: #684ed4; }
+.eyebrow { color: #755bda; font-size: .69rem; font-weight: 800; letter-spacing: .14em; line-height: 1; text-transform: uppercase; }
+.section-title { font-size: clamp(2.35rem, 4.3vw, 4rem); font-weight: 800; letter-spacing: -.065em; line-height: .96; }
+.hero-orb { position: absolute; z-index: 0; border-radius: 999px; filter: blur(1px); pointer-events: none; }
+.hero-orb-one { top: 5%; left: 31%; width: 22rem; height: 22rem; background: radial-gradient(circle, rgba(218,209,255,.72), rgba(218,209,255,0) 68%); }
+.hero-orb-two { right: -8%; bottom: 2%; width: 18rem; height: 18rem; background: radial-gradient(circle, rgba(182,247,221,.58), rgba(182,247,221,0) 68%); }
+.animate-in { animation: enter .75s both cubic-bezier(.22, 1, .36, 1); }
+.delay-1 { animation-delay: 80ms; } .delay-2 { animation-delay: 160ms; } .delay-3 { animation-delay: 240ms; } .delay-4 { animation-delay: 320ms; }
+.card-float { animation: float 6s ease-in-out infinite; }
+.card-float-reverse { animation: float-reverse 7s ease-in-out infinite; }
+@keyframes enter { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes float { 50% { transform: translateY(-7px) rotate(-.35deg); } }
+@keyframes float-reverse { 50% { transform: translateY(7px) rotate(.35deg); } }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
