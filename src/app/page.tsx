@@ -17,7 +17,7 @@ export default function Home() {
         </div>
         <div className="nav-actions">
           <ThemeToggle />
-          <a className="nav-cta" href="#how-it-works">Explore SwapGap <Arrow /></a>
+          <a className="nav-cta" href="/workspace">Explore SwapGap <Arrow /></a>
         </div>
         <details className="mobile-menu">
           <summary aria-label="Open navigation"><span /><span /><span /></summary>
