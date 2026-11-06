@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, useSyncExternalStore, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { ThemeToggle } from "../theme-toggle";
 import { LogoutButton } from "../logout-button";
 
@@ -18,8 +19,6 @@ type SkillListing = {
 };
 type View = "overview" | "marketplace";
 
-const STORAGE_KEY = "swapgap-demo-skills-v1";
-const CHANGE_EVENT = "swapgap:skills-changed";
 const CATEGORIES: SkillCategory[] = ["Design", "Development", "Writing", "Marketing", "Video", "Business"];
 const SAMPLE_LISTINGS: SkillListing[] = [
   { id: "demo-aarav", owner: "Aarav", isMine: false, offer: "Logo & Brand Identity", need: "Website copywriting", category: "Design", value: 100, description: "A memorable logo and a compact brand starter kit for your next big idea." },
@@ -30,49 +29,15 @@ const SAMPLE_LISTINGS: SkillListing[] = [
   { id: "demo-neha", owner: "Neha", isMine: false, offer: "Social Media Strategy", need: "Product video editing", category: "Marketing", value: 110, description: "A two-week content plan, posting ideas, and an audience-first messaging guide." },
 ];
 
-function readStorage(): string {
-  try {
-    return window.localStorage.getItem(STORAGE_KEY) ?? "";
-  } catch {
-    return "";
-  }
-}
-function serverStorage(): string { return ""; }
-function subscribeStorage(notify: () => void): () => void {
-  window.addEventListener("storage", notify);
-  window.addEventListener(CHANGE_EVENT, notify);
-  return () => {
-    window.removeEventListener("storage", notify);
-    window.removeEventListener(CHANGE_EVENT, notify);
-  };
-}
-function isListing(item: unknown): item is SkillListing {
-  if (typeof item !== "object" || item === null) return false;
-  const record = item as Record<string, unknown>;
-  return typeof record.id === "string" && typeof record.owner === "string" &&
-    typeof record.isMine === "boolean" && typeof record.offer === "string" &&
-    typeof record.need === "string" && typeof record.description === "string" &&
-    typeof record.value === "number" && Number.isFinite(record.value) && record.value >= 0 &&
-    CATEGORIES.includes(record.category as SkillCategory);
-}
-function parseListings(raw: string): SkillListing[] {
-  if (!raw) return SAMPLE_LISTINGS;
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.every(isListing) ? parsed : SAMPLE_LISTINGS;
-  } catch {
-    return SAMPLE_LISTINGS;
-  }
-}
-function saveListings(listings: SkillListing[]): boolean {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(listings));
-    window.dispatchEvent(new Event(CHANGE_EVENT));
-    return true;
-  } catch {
-    return false;
-  }
-}
+type DatabaseListing = {
+  id: string;
+  owner_id: string;
+  offer: string;
+  need: string;
+  category: string;
+  value: number;
+  description: string;
+};
 function money(amount: number) { return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(amount); }
 function Icon({ name, size = 19 }: { name: "arrow" | "exchange" | "grid" | "search" | "plus" | "spark" | "check" | "close" | "trash" | "filter"; size?: number }) {
   const path: Record<typeof name, ReactNode> = {
@@ -94,9 +59,62 @@ function AppBrand() {
 }
 
 export default function WorkspaceClient() {
-  const stored = useSyncExternalStore(subscribeStorage, readStorage, serverStorage);
-  const listings = useMemo(() => parseListings(stored), [stored]);
-  const ownListings = useMemo(() => listings.filter((item) => item.isMine), [listings]);
+  const [remoteListings, setRemoteListings] = useState<SkillListing[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const listings = useMemo(() => [...remoteListings, ...SAMPLE_LISTINGS], [remoteListings]);
+  const ownListings = useMemo(() => remoteListings.filter((item) => item.isMine), [remoteListings]);
+
+  useEffect(() => {
+    let mounted = true;
+    const supabase = createClient();
+
+    async function loadMarketplace() {
+      const { data: auth, error: authError } = await supabase.auth.getUser();
+      if (!mounted) return;
+      if (authError || !auth.user) {
+        setLoadError("Your session could not be verified. Please sign in again.");
+        setIsLoading(false);
+        return;
+      }
+      const uid = auth.user.id;
+      setUserId(uid);
+      const { data, error } = await supabase
+        .from("skill_listings")
+        .select("id,owner_id,offer,need,category,value,description")
+        .eq("status", "published")
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (!mounted) return;
+      if (error) {
+        setLoadError("Could not load marketplace listings. Check your Supabase API permissions and RLS policies.");
+        console.error("[SwapGap] Marketplace load failed:", error.message);
+        setIsLoading(false);
+        return;
+      }
+      const rows = (data ?? []) as DatabaseListing[];
+      const ids = Array.from(new Set(rows.map((row) => row.owner_id)));
+      const profiles = ids.length
+        ? await supabase.from("profiles").select("id,display_name").in("id", ids)
+        : { data: [] as { id: string; display_name: string }[] };
+      if (!mounted) return;
+      const ownerNames = new Map((profiles.data ?? []).map((profile) => [profile.id, profile.display_name]));
+      setRemoteListings(rows.map((row) => ({
+        id: row.id,
+        owner: row.owner_id === uid ? "You" : ownerNames.get(row.owner_id) || "SwapGap member",
+        isMine: row.owner_id === uid,
+        offer: row.offer,
+        need: row.need,
+        category: CATEGORIES.includes(row.category as SkillCategory) ? row.category as SkillCategory : "Business",
+        value: Number(row.value),
+        description: row.description,
+      })));
+      setIsLoading(false);
+    }
+    void loadMarketplace();
+    return () => { mounted = false; };
+  }, []);
   const [view, setView] = useState<View>("overview");
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All skills");
@@ -117,7 +135,7 @@ export default function WorkspaceClient() {
     setShowForm(true);
     setNotice("");
   }
-  function addListing(event: FormEvent<HTMLFormElement>) {
+  async function addListing(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
     const data = new FormData(form);
@@ -126,35 +144,57 @@ export default function WorkspaceClient() {
     const description = String(data.get("description") ?? "").trim();
     const chosenCategory = String(data.get("category") ?? "") as SkillCategory;
     const value = Number(data.get("value"));
-    if (!offer || !need || !description || !CATEGORIES.includes(chosenCategory) ||
+    if (offer.length < 3 || need.length < 3 || !description || !CATEGORIES.includes(chosenCategory) ||
       !Number.isFinite(value) || value < 1 || value > 10000) {
-      setNotice("Please complete the fields with a valid value between $1 and $10,000.");
+      setNotice("Complete all fields with a valid service value between $1 and $10,000.");
       return;
     }
-    const listing: SkillListing = {
-      id: `mine-${crypto.randomUUID()}`, owner: "You", isMine: true, offer, need,
-      description, category: chosenCategory, value,
-    };
-    if (!saveListings([listing, ...listings])) {
-      setNotice("Your browser blocked local saving. Check storage permissions and try again.");
+    if (!userId) {
+      setNotice("Your session is not ready. Please sign in again.");
       return;
     }
+    const supabase = createClient();
+    const { data: row, error } = await supabase.from("skill_listings")
+      .insert({ owner_id: userId, offer, need, description, category: chosenCategory, value, status: "published" })
+      .select("id,offer,need,description,category,value")
+      .single();
+    if (error || !row) {
+      console.error("[SwapGap] Listing save failed:", error?.message);
+      setNotice("Could not save your listing. Please check the database connection and try again.");
+      return;
+    }
+    setRemoteListings((items) => [{
+      id: row.id,
+      owner: "You",
+      isMine: true,
+      offer: row.offer,
+      need: row.need,
+      description: row.description,
+      category: row.category as SkillCategory,
+      value: Number(row.value),
+    }, ...items]);
     form.reset();
     setShowForm(false);
     setOnlyMine(false);
     setCategory("All skills");
     setQuery("");
-    setNotice("Your skill listing was added and saved in this browser.");
+    setNotice("Your listing was published to the SwapGap database.");
   }
-  function removeListing(id: string) {
-    const chosen = listings.find((item) => item.id === id);
-    if (!chosen?.isMine) return;
-    if (!saveListings(listings.filter((item) => item.id !== id))) {
-      setNotice("Could not remove this listing because browser storage is unavailable.");
+  async function removeListing(id: string) {
+    const chosen = remoteListings.find((item) => item.id === id);
+    if (!chosen?.isMine || !userId) return;
+    if (!window.confirm("Delete this skill listing?")) return;
+    const supabase = createClient();
+    const { data, error } = await supabase.from("skill_listings")
+      .delete().eq("id", id).eq("owner_id", userId).select("id");
+    if (error || !data?.length) {
+      console.error("[SwapGap] Listing delete failed:", error?.message);
+      setNotice("Could not delete the listing. Please try again.");
       return;
     }
+    setRemoteListings((items) => items.filter((item) => item.id !== id));
     setExpandedId(null);
-    setNotice("Your listing was removed.");
+    setNotice("Your listing was deleted from the SwapGap database.");
   }
   function goToMarketplace() { setView("marketplace"); setNotice(""); }
 
@@ -177,27 +217,29 @@ export default function WorkspaceClient() {
       <div className="ws-main">
         <header className="ws-topbar">
           <div className="ws-breadcrumb"><span>SwapGap AI</span><span className="ws-slash">/</span><strong>{view === "overview" ? "Overview" : "Skill marketplace"}</strong></div>
-          <div className="ws-top-actions"><span className="ws-local-chip">Local demo</span><ThemeToggle /><LogoutButton /><button className="ws-btn ws-btn-primary ws-add-top" type="button" onClick={openCreate}><Icon name="plus" size={17} /> Add a skill</button></div>
+          <div className="ws-top-actions"><span className="ws-local-chip">{isLoading ? "Connecting..." : loadError ? "Database unavailable" : "Supabase connected"}</span><ThemeToggle /><LogoutButton /><button className="ws-btn ws-btn-primary ws-add-top" type="button" onClick={openCreate}><Icon name="plus" size={17} /> Add a skill</button></div>
         </header>
         <main className="ws-content">
+          {isLoading && <p className="ws-notice" role="status">Loading live marketplace listings...</p>}
+          {loadError && <p className="ws-notice" role="alert">{loadError}</p>}
           {view === "overview" ? (
             <>
               <div className="ws-page-intro"><div><p className="ws-eyebrow">WELCOME TO YOUR EXCHANGE SPACE</p><h1>Your skills open doors.</h1><p>Start with what you can offer. Find the expertise you need. Build something valuable together.</p></div><button className="ws-btn ws-btn-primary" type="button" onClick={openCreate}><Icon name="plus" /> List a skill</button></div>
               <section className="ws-hero-panel" aria-label="Get started"><div className="ws-hero-text"><span className="ws-hero-kicker"><Icon name="spark" size={15} /> THE NEW ECONOMY OF SKILLS</span><h2>Give your expertise a new exchange rate.</h2><p>Create your first listing, then discover what other people are bringing to the table.</p><button className="ws-btn ws-btn-lime" type="button" onClick={goToMarketplace}>Explore the marketplace <Icon name="arrow" size={17} /></button></div><div className="ws-hero-art" aria-hidden="true"><div className="ws-art-card ws-art-card-a"><span>YOU OFFER</span><strong>Your expertise</strong><small>Skills are valuable</small></div><span className="ws-art-exchange"><Icon name="exchange" size={27} /></span><div className="ws-art-card ws-art-card-b"><span>YOU RECEIVE</span><strong>New possibilities</strong><small>Mutual opportunity</small></div></div></section>
-              <section className="ws-overview-metrics" aria-label="Workspace summary"><div><span>My skill listings</span><strong>{ownListings.length.toString().padStart(2, "0")}</strong><small>Saved in this browser</small></div><div><span>Community examples</span><strong>{listings.filter((item) => !item.isMine).length.toString().padStart(2, "0")}</strong><small>Fictional demo profiles</small></div><div><span>Exchange agreements</span><strong>—</strong><small>Not available in this milestone</small></div></section>
+              <section className="ws-overview-metrics" aria-label="Workspace summary"><div><span>My skill listings</span><strong>{ownListings.length.toString().padStart(2, "0")}</strong><small>Saved in Supabase</small></div><div><span>Community examples</span><strong>{listings.filter((item) => !item.isMine).length.toString().padStart(2, "0")}</strong><small>Fictional demo profiles</small></div><div><span>Exchange agreements</span><strong>—</strong><small>Not available in this milestone</small></div></section>
               <div className="ws-section-heading"><div><p className="ws-eyebrow">EXPLORE POSSIBILITIES</p><h2>Meet the skills in the room.</h2></div><button type="button" className="ws-inline-link" onClick={goToMarketplace}>View all listings <Icon name="arrow" size={17} /></button></div>
               <div className="ws-cards ws-overview-list">{listings.slice(0, 3).map((item) => <ListingCard key={item.id} listing={item} expanded={expandedId === item.id} onExpand={() => setExpandedId(expandedId === item.id ? null : item.id)} onRemove={removeListing} />)}</div>
-              <p className="ws-demo-note">Profiles shown here are fictional demo examples. Matching, negotiations and PayPal payments are not connected yet.</p>
+              <p className="ws-demo-note">Demo profiles are fictional. Your published listings are saved to Supabase. AI matching and PayPal payments are not connected yet.</p>
             </>
           ) : (
             <>
               <div className="ws-page-intro"><div><p className="ws-eyebrow">DISCOVER & EXCHANGE</p><h1>Talent meets opportunity.</h1><p>Browse offers, discover complementary skills, or share something you&apos;re great at.</p></div><button className="ws-btn ws-btn-primary" type="button" onClick={openCreate}><Icon name="plus" /> Create listing</button></div>
               <div className="ws-market-tools"><label className="ws-search"><Icon name="search" /><span className="ws-sr-only">Search skills</span><input type="search" placeholder="Search skills, people, or needs..." value={query} onChange={(event) => setQuery(event.target.value)} /></label><label className="ws-filter"><Icon name="filter" size={18} /><span className="ws-sr-only">Filter by category</span><select value={category} onChange={(event) => setCategory(event.target.value)}><option>All skills</option>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select></label><label className="ws-my-filter"><input type="checkbox" checked={onlyMine} onChange={(event) => setOnlyMine(event.target.checked)} /> My listings only</label></div>
               {notice && <p className="ws-notice" role="status">{notice}</p>}
-              {showForm && <section className="ws-create-panel" aria-label="Create skill listing"><div className="ws-form-top"><div><p className="ws-eyebrow">SHARE WHAT YOU KNOW</p><h2>Create a skill listing</h2><p>This listing is saved locally for the prototype.</p></div><button className="ws-icon-btn" onClick={() => setShowForm(false)} type="button" aria-label="Close listing form"><Icon name="close" /></button></div><form className="ws-create-form" onSubmit={addListing}><label>Skill you offer<input name="offer" maxLength={70} placeholder="e.g. Brand identity design" required /></label><label>Skill you need<input name="need" maxLength={70} placeholder="e.g. Website copywriting" required /></label><label>Category<select name="category" defaultValue="" required><option value="" disabled>Choose a category</option>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select></label><label>Example service value (USD)<input name="value" type="number" min="1" max="10000" step="1" placeholder="100" required /></label><label className="ws-span-full">What will you deliver?<textarea name="description" maxLength={220} rows={3} placeholder="Briefly describe your service and its scope." required /></label><div className="ws-form-actions"><span>Example amount only — not a market-price estimate.</span><button className="ws-btn ws-btn-primary" type="submit"><Icon name="check" size={17} /> Save my listing</button></div></form></section>}
-              <div className="ws-results-heading"><div><p className="ws-eyebrow">SKILL DISCOVERY</p><h2>{results.length} {results.length === 1 ? "listing" : "listings"} found</h2></div><span>Illustrative community + your local listings</span></div>
+              {showForm && <section className="ws-create-panel" aria-label="Create skill listing"><div className="ws-form-top"><div><p className="ws-eyebrow">SHARE WHAT YOU KNOW</p><h2>Create a skill listing</h2><p>Your published listing will appear for signed-in members.</p></div><button className="ws-icon-btn" onClick={() => setShowForm(false)} type="button" aria-label="Close listing form"><Icon name="close" /></button></div><form className="ws-create-form" onSubmit={addListing}><label>Skill you offer<input name="offer" maxLength={70} placeholder="e.g. Brand identity design" required /></label><label>Skill you need<input name="need" maxLength={70} placeholder="e.g. Website copywriting" required /></label><label>Category<select name="category" defaultValue="" required><option value="" disabled>Choose a category</option>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select></label><label>Example service value (USD)<input name="value" type="number" min="1" max="10000" step="1" placeholder="100" required /></label><label className="ws-span-full">What will you deliver?<textarea name="description" maxLength={220} rows={3} placeholder="Briefly describe your service and its scope." required /></label><div className="ws-form-actions"><span>Example amount only — not a market-price estimate.</span><button className="ws-btn ws-btn-primary" type="submit"><Icon name="check" size={17} /> Save my listing</button></div></form></section>}
+              <div className="ws-results-heading"><div><p className="ws-eyebrow">SKILL DISCOVERY</p><h2>{results.length} {results.length === 1 ? "listing" : "listings"} found</h2></div><span>Fictional examples + real published listings</span></div>
               {results.length ? <div className="ws-cards">{results.map((item) => <ListingCard key={item.id} listing={item} expanded={expandedId === item.id} onExpand={() => setExpandedId(expandedId === item.id ? null : item.id)} onRemove={removeListing} />)}</div> : <div className="ws-empty"><Icon name="search" size={32} /><h3>No skills found yet</h3><p>Try another search or remove your filters.</p><button type="button" className="ws-btn ws-btn-secondary" onClick={() => { setQuery(""); setCategory("All skills"); setOnlyMine(false); }}>Clear filters</button></div>}
-              <p className="ws-demo-note">This is a browser-local prototype. Listings are not public and cannot yet initiate a real exchange or payment.</p>
+              <p className="ws-demo-note">Real listings are stored in Supabase and visible to signed-in members. Demo profiles are fictional. Exchanges and payments are not yet enabled.</p>
             </>
           )}
         </main>
@@ -207,5 +249,5 @@ export default function WorkspaceClient() {
 }
 
 function ListingCard({ listing, expanded, onExpand, onRemove }: { listing: SkillListing; expanded: boolean; onExpand: () => void; onRemove: (id: string) => void }) {
-  return <article className="ws-listing"><div className="ws-listing-top"><span className="ws-person-avatar">{listing.owner.slice(0, 1).toUpperCase()}</span><div><strong>{listing.owner}</strong><span>{listing.isMine ? "Your local listing" : "Fictional demo profile"}</span></div><span className="ws-value">{money(listing.value)}</span></div><span className="ws-category">{listing.category}</span><h3>{listing.offer}</h3><p className="ws-need-label">LOOKING FOR</p><p className="ws-need">{listing.need}</p>{expanded && <div className="ws-detail"><strong>What&apos;s included</strong><p>{listing.description}</p><small>Listed amount is illustrative and requires mutual agreement in a future swap.</small></div>}<div className="ws-listing-actions"><button className="ws-card-btn" type="button" aria-expanded={expanded} onClick={onExpand}>{expanded ? "Hide details" : "View details"} <Icon name="arrow" size={15} /></button>{listing.isMine && <button className="ws-delete" type="button" onClick={() => onRemove(listing.id)} aria-label={`Remove ${listing.offer} listing`}><Icon name="trash" size={17} /></button>}</div></article>;
+  return <article className="ws-listing"><div className="ws-listing-top"><span className="ws-person-avatar">{listing.owner.slice(0, 1).toUpperCase()}</span><div><strong>{listing.owner}</strong><span>{listing.isMine ? "Your published listing" : listing.id.startsWith("demo-") ? "Fictional example" : "Community member"}</span></div><span className="ws-value">{money(listing.value)}</span></div><span className="ws-category">{listing.category}</span><h3>{listing.offer}</h3><p className="ws-need-label">LOOKING FOR</p><p className="ws-need">{listing.need}</p>{expanded && <div className="ws-detail"><strong>What&apos;s included</strong><p>{listing.description}</p><small>Listed amount is illustrative and requires mutual agreement in a future swap.</small></div>}<div className="ws-listing-actions"><button className="ws-card-btn" type="button" aria-expanded={expanded} onClick={onExpand}>{expanded ? "Hide details" : "View details"} <Icon name="arrow" size={15} /></button>{listing.isMine && <button className="ws-delete" type="button" onClick={() => onRemove(listing.id)} aria-label={`Remove ${listing.offer} listing`}><Icon name="trash" size={17} /></button>}</div></article>;
 }
