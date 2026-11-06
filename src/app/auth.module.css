@@ -1,0 +1,35 @@
+.page { min-height: 100vh; color: var(--sg-ink); background: var(--sg-bg); }
+.header { width: min(100% - 40px, 1180px); display: flex; align-items: center; justify-content: space-between; margin: 0 auto; padding: 24px 0; }
+.brand { display: inline-flex; align-items: center; gap: 8px; color: var(--sg-ink); font-size: 20px; font-weight: 800; letter-spacing: -.07em; }
+.brand > span:last-child { color: var(--sg-accent); }
+.mark { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 11px; color: #d8f77c; background: #111c29; font-size: 20px; letter-spacing: 0; }
+.shell { width: min(100% - 40px, 1060px); display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(360px, .8fr); align-items: center; gap: clamp(40px, 8vw, 120px); min-height: calc(100vh - 82px); margin: 0 auto; padding: 50px 0 88px; }
+.story { max-width: 560px; }
+.eyebrow { margin: 0 0 14px; color: var(--sg-accent); font-size: 10px; font-weight: 800; letter-spacing: .14em; }
+.story h1, .card h2 { margin: 0; letter-spacing: -.07em; line-height: 1; }
+.story h1 { max-width: 540px; font-size: clamp(48px, 6vw, 75px); }
+.story > p:not(.eyebrow) { max-width: 470px; margin: 23px 0 0; color: var(--sg-muted); font-size: 15px; line-height: 1.75; }
+.orbit { position: relative; display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; max-width: 405px; margin-top: 48px; padding: 22px 24px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--sg-accent) 30%, var(--sg-border)); border-radius: 20px; color: #edf7f3; background: #111f25; box-shadow: var(--sg-shadow); }
+.orbit::after { position: absolute; inset: 0 0 0 52%; content: ""; opacity: .28; background-image: linear-gradient(#6ab9aa 1px, transparent 1px), linear-gradient(90deg, #6ab9aa 1px, transparent 1px); background-size: 18px 18px; }
+.orbit span, .orbit b { z-index: 1; }
+.orbit span { color: #8ad5c6; font-size: 9px; font-weight: 800; letter-spacing: .1em; }
+.orbit b { font-size: 14px; letter-spacing: -.03em; }
+.orbit i { position: absolute; top: calc(50% - 18px); left: calc(50% - 18px); z-index: 2; display: grid; width: 36px; height: 36px; place-items: center; border: 3px solid #111f25; border-radius: 50%; color: #111c29; background: #d8f77c; font-size: 19px; font-style: normal; }
+.card { padding: clamp(27px, 4vw, 42px); border: 1px solid var(--sg-border); border-radius: 24px; background: var(--sg-surface); box-shadow: var(--sg-shadow); }
+.card h2 { font-size: 36px; }
+.intro { margin: 12px 0 28px; color: var(--sg-muted); font-size: 13px; line-height: 1.65; }
+.form { display: grid; gap: 18px; }
+.field { display: grid; gap: 8px; }
+.field label { font-size: 12px; font-weight: 700; }
+.field input { width: 100%; min-width: 0; min-height: 48px; padding: 12px 14px; border: 1px solid var(--sg-border); border-radius: 11px; outline: 0; color: var(--sg-ink); background: var(--sg-bg); font: inherit; font-size: 13px; }
+.field input:focus { border-color: var(--sg-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--sg-accent) 14%, transparent); }
+.error, .message { margin: -2px 0 0; padding: 11px 13px; border-radius: 10px; font-size: 12px; line-height: 1.5; }
+.error { border: 1px solid color-mix(in srgb, #c65555 35%, var(--sg-border)); color: #a23f3f; background: color-mix(in srgb, #c65555 10%, var(--sg-surface)); }
+.message { border: 1px solid color-mix(in srgb, var(--sg-accent) 35%, var(--sg-border)); color: var(--sg-ink); background: var(--sg-surface-soft); }
+.submit { min-height: 48px; border: 1px solid var(--sg-nav-cta-border); border-radius: 999px; color: var(--sg-nav-cta-fg); background: var(--sg-nav-cta-bg); font: inherit; font-size: 13px; font-weight: 800; cursor: pointer; transition: transform .2s ease, background .2s ease; }
+.submit:hover:not(:disabled) { background: var(--sg-nav-cta-hover); transform: translateY(-2px); }
+.submit:disabled { cursor: wait; opacity: .7; }
+.switch { margin: 2px 0 0; color: var(--sg-muted); text-align: center; font-size: 12px; }
+.switch a { color: var(--sg-accent); font-weight: 800; }
+@media (max-width: 780px) { .shell { grid-template-columns: 1fr; gap: 42px; min-height: auto; padding-top: 35px; }.story { max-width: 620px; }.story h1 { font-size: clamp(45px, 12vw, 67px); }.orbit { margin-top: 33px; }.card { width: min(100%, 500px); }.header, .shell { width: min(100% - 32px, 1060px); } }
+@media (max-width: 430px) { .header { padding: 17px 0; }.story h1 { font-size: 47px; }.orbit { grid-template-columns: 1fr; gap: 5px; }.orbit i { top: calc(50% - 18px); left: auto; right: 22px; }.card { padding: 26px 21px; border-radius: 20px; } }

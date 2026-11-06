@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState, useSyncExternalStore, type FormEvent, type ReactNode } from "react";
 import { ThemeToggle } from "../theme-toggle";
+import { LogoutButton } from "../logout-button";
 
 type SkillCategory = "Design" | "Development" | "Writing" | "Marketing" | "Video" | "Business";
 type SkillListing = {
@@ -176,7 +177,7 @@ export default function WorkspaceClient() {
       <div className="ws-main">
         <header className="ws-topbar">
           <div className="ws-breadcrumb"><span>SwapGap AI</span><span className="ws-slash">/</span><strong>{view === "overview" ? "Overview" : "Skill marketplace"}</strong></div>
-          <div className="ws-top-actions"><span className="ws-local-chip">Local demo</span><ThemeToggle /><button className="ws-btn ws-btn-primary ws-add-top" type="button" onClick={openCreate}><Icon name="plus" size={17} /> Add a skill</button></div>
+          <div className="ws-top-actions"><span className="ws-local-chip">Local demo</span><ThemeToggle /><LogoutButton /><button className="ws-btn ws-btn-primary ws-add-top" type="button" onClick={openCreate}><Icon name="plus" size={17} /> Add a skill</button></div>
         </header>
         <main className="ws-content">
           {view === "overview" ? (
