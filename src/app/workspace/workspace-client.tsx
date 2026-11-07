@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "re
 import { createClient } from "@/lib/supabase/client";
 import { ThemeToggle } from "../theme-toggle";
 import { LogoutButton } from "../logout-button";
+import { AiMatchStudio } from "./ai-match-studio";
 
 type SkillCategory = "Design" | "Development" | "Writing" | "Marketing" | "Video" | "Business";
 type SkillListing = {
@@ -226,6 +227,7 @@ export default function WorkspaceClient() {
             <>
               <div className="ws-page-intro"><div><p className="ws-eyebrow">WELCOME TO YOUR EXCHANGE SPACE</p><h1>Your skills open doors.</h1><p>Start with what you can offer. Find the expertise you need. Build something valuable together.</p></div><button className="ws-btn ws-btn-primary" type="button" onClick={openCreate}><Icon name="plus" /> List a skill</button></div>
               <section className="ws-hero-panel" aria-label="Get started"><div className="ws-hero-text"><span className="ws-hero-kicker"><Icon name="spark" size={15} /> THE NEW ECONOMY OF SKILLS</span><h2>Give your expertise a new exchange rate.</h2><p>Create your first listing, then discover what other people are bringing to the table.</p><button className="ws-btn ws-btn-lime" type="button" onClick={goToMarketplace}>Explore the marketplace <Icon name="arrow" size={17} /></button></div><div className="ws-hero-art" aria-hidden="true"><div className="ws-art-card ws-art-card-a"><span>YOU OFFER</span><strong>Your expertise</strong><small>Skills are valuable</small></div><span className="ws-art-exchange"><Icon name="exchange" size={27} /></span><div className="ws-art-card ws-art-card-b"><span>YOU RECEIVE</span><strong>New possibilities</strong><small>Mutual opportunity</small></div></div></section>
+              <AiMatchStudio />
               <section className="ws-overview-metrics" aria-label="Workspace summary"><div><span>My skill listings</span><strong>{ownListings.length.toString().padStart(2, "0")}</strong><small>Saved in Supabase</small></div><div><span>Community examples</span><strong>{listings.filter((item) => !item.isMine).length.toString().padStart(2, "0")}</strong><small>Fictional demo profiles</small></div><div><span>Exchange agreements</span><strong>—</strong><small>Not available in this milestone</small></div></section>
               <div className="ws-section-heading"><div><p className="ws-eyebrow">EXPLORE POSSIBILITIES</p><h2>Meet the skills in the room.</h2></div><button type="button" className="ws-inline-link" onClick={goToMarketplace}>View all listings <Icon name="arrow" size={17} /></button></div>
               <div className="ws-cards ws-overview-list">{listings.slice(0, 3).map((item) => <ListingCard key={item.id} listing={item} expanded={expandedId === item.id} onExpand={() => setExpandedId(expandedId === item.id ? null : item.id)} onRemove={removeListing} />)}</div>
