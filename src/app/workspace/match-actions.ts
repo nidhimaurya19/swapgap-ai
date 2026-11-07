@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 const REQUEST_COOLDOWN_MS = 90_000;
 const MAX_SHORTLISTED_PAIRS = 8;
 const recentRequests = new Map<string, number>();
+const recentNegotiations = new Map<string, number>();
 
 type ListingRow = { id: string; owner_id: string; offer: string; need: string; description: string; category: string };
 type CandidatePair = { mine: ListingRow; candidate: ListingRow; score: number };
@@ -30,6 +31,11 @@ export type MatchResponse =
   | { status: "api_limit"; message: string; retryAfterSeconds: number }
   | { status: "error"; message: string };
 
+type NegotiationOption = { reasoning: string; scopeAssumptions: string[]; concerns: string[] };
+export type NegotiationResponse =
+  | { status: "options"; myOffer: string; candidateOffer: string; myValue: number; candidateValue: number; cashDifference: number; payer: "you" | "member" | "none"; cashBalance: NegotiationOption; scopeBalance: NegotiationOption; pureBarter: NegotiationOption; cooldownSeconds: number }
+  | { status: "empty" | "rate_limited" | "api_limit" | "error"; message: string; retryAfterSeconds?: number };
+
 const AI_MATCH_SCHEMA = {
   type: "object",
   properties: {
@@ -50,6 +56,16 @@ const AI_MATCH_SCHEMA = {
     },
   },
   required: ["matches"],
+} as const;
+
+const NEGOTIATION_SCHEMA = {
+  type: "object",
+  properties: {
+    cash_balance: { type: "object", properties: { reasoning: { type: "string" }, scope_assumptions: { type: "array", items: { type: "string" } }, concerns: { type: "array", items: { type: "string" } } }, required: ["reasoning", "scope_assumptions", "concerns"] },
+    scope_balance: { type: "object", properties: { reasoning: { type: "string" }, scope_assumptions: { type: "array", items: { type: "string" } }, concerns: { type: "array", items: { type: "string" } } }, required: ["reasoning", "scope_assumptions", "concerns"] },
+    pure_barter: { type: "object", properties: { reasoning: { type: "string" }, scope_assumptions: { type: "array", items: { type: "string" } }, concerns: { type: "array", items: { type: "string" } } }, required: ["reasoning", "scope_assumptions", "concerns"] },
+  },
+  required: ["cash_balance", "scope_balance", "pure_barter"],
 } as const;
 
 const SYNONYM_GROUPS = [
@@ -114,6 +130,14 @@ function promptText(value: string) {
 function isApiLimitError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
   return /\b429\b|resource exhausted|rate limit|quota/i.test(message);
+}
+
+function optionFrom(value: unknown): NegotiationOption | null {
+  if (typeof value !== "object" || value === null) return null;
+  const item = value as Record<string, unknown>;
+  const reasoning = safeText(item.reasoning, 600);
+  if (!reasoning) return null;
+  return { reasoning, scopeAssumptions: readableStrings(item.scope_assumptions, 5), concerns: readableStrings(item.concerns, 5) };
 }
 
 export async function findAiMatches(): Promise<MatchResponse> {
@@ -186,5 +210,57 @@ export async function findAiMatches(): Promise<MatchResponse> {
   } catch (error) {
     if (isApiLimitError(error)) return { status: "api_limit", message: "Gemini’s free-tier request limit was reached. Please wait and try again.", retryAfterSeconds: Math.ceil(REQUEST_COOLDOWN_MS / 1000) };
     return { status: "error", message: "AI matching is temporarily unavailable. Please try again shortly." };
+  }
+}
+
+export async function exploreSwapOptions(myListingId: string, candidateListingId: string): Promise<NegotiationResponse> {
+  if (!myListingId || !candidateListingId || myListingId === candidateListingId) return { status: "empty", message: "This match no longer has two valid listings." };
+  const supabase = await createClient();
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const userId = typeof claimsData?.claims?.sub === "string" ? claimsData.claims.sub : null;
+  if (!userId) return { status: "error", message: "Your session could not be verified. Please sign in again." };
+
+  const requestedAt = recentNegotiations.get(userId);
+  const elapsed = requestedAt ? Date.now() - requestedAt : REQUEST_COOLDOWN_MS;
+  if (elapsed < REQUEST_COOLDOWN_MS) return { status: "rate_limited", message: "Please wait before requesting another swap suggestion.", retryAfterSeconds: Math.ceil((REQUEST_COOLDOWN_MS - elapsed) / 1000) };
+
+  const { data, error } = await supabase.from("skill_listings")
+    .select("id,owner_id,offer,need,description,value")
+    .eq("status", "published")
+    .in("id", [myListingId, candidateListingId]);
+  if (error || !data || data.length !== 2) return { status: "empty", message: "One or both published listings are no longer available." };
+
+  const mine = data.find((listing) => listing.id === myListingId && listing.owner_id === userId);
+  const candidate = data.find((listing) => listing.id === candidateListingId && listing.owner_id !== userId);
+  if (!mine || !candidate || typeof mine.value !== "number" || typeof candidate.value !== "number" || mine.value < 0 || candidate.value < 0) {
+    return { status: "empty", message: "These listings cannot be used for a swap suggestion." };
+  }
+
+  const myValue = Number(mine.value);
+  const candidateValue = Number(candidate.value);
+  const cashDifference = Math.abs(myValue - candidateValue);
+  const payer: "you" | "member" | "none" = myValue === candidateValue ? "none" : myValue > candidateValue ? "member" : "you";
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return { status: "error", message: "AI negotiation is not configured yet." };
+  recentNegotiations.set(userId, Date.now());
+
+  try {
+    const ai = new GoogleGenAI({ apiKey });
+    const response = await ai.models.generateContent({
+      model: process.env.GEMINI_MODEL?.trim() || "gemini-3.5-flash-lite",
+      contents: `Suggest three nonbinding swap negotiation options for two reciprocal services. Do not calculate money, invent values, agreements, people, or deliverables. Explain only scope assumptions, tradeoffs, and questions to discuss. The deterministic values are supplied as context.\n\n${JSON.stringify({ my_service: { offer: promptText(mine.offer), description: promptText(mine.description), need: promptText(mine.need), estimated_value: myValue }, candidate_service: { offer: promptText(candidate.offer), description: promptText(candidate.description), need: promptText(candidate.need), estimated_value: candidateValue }, deterministic_cash_difference: cashDifference })}`,
+      config: { responseMimeType: "application/json", responseJsonSchema: NEGOTIATION_SCHEMA, temperature: 0.25, maxOutputTokens: 1500 },
+    });
+    const parsed: unknown = response.text ? JSON.parse(response.text) : null;
+    if (typeof parsed !== "object" || parsed === null) return { status: "empty", message: "AI did not return usable swap options." };
+    const options = parsed as Record<string, unknown>;
+    const cashBalance = optionFrom(options.cash_balance);
+    const scopeBalance = optionFrom(options.scope_balance);
+    const pureBarter = optionFrom(options.pure_barter);
+    if (!cashBalance || !scopeBalance || !pureBarter) return { status: "empty", message: "AI did not return three usable swap options." };
+    return { status: "options", myOffer: mine.offer, candidateOffer: candidate.offer, myValue, candidateValue, cashDifference, payer, cashBalance, scopeBalance, pureBarter, cooldownSeconds: Math.ceil(REQUEST_COOLDOWN_MS / 1000) };
+  } catch (error) {
+    if (isApiLimitError(error)) return { status: "api_limit", message: "Gemini’s free-tier request limit was reached. Please wait and try again.", retryAfterSeconds: Math.ceil(REQUEST_COOLDOWN_MS / 1000) };
+    return { status: "error", message: "AI negotiation is temporarily unavailable. Please try again shortly." };
   }
 }

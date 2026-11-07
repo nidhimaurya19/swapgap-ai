@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { findAiMatches, type MatchResponse } from "./match-actions";
+import { exploreSwapOptions, findAiMatches, type MatchResponse, type NegotiationResponse } from "./match-actions";
 
 export function AiMatchStudio() {
   const [result, setResult] = useState<MatchResponse | null>(null);
   const [isPending, startTransition] = useTransition();
   const [secondsRemaining, setSecondsRemaining] = useState(0);
+  const [negotiation, setNegotiation] = useState<{ key: string; response: NegotiationResponse } | null>(null);
+  const [isNegotiating, startNegotiation] = useTransition();
+  const [negotiationSeconds, setNegotiationSeconds] = useState(0);
 
   useEffect(() => {
     if (secondsRemaining <= 0) return;
@@ -14,12 +17,28 @@ export function AiMatchStudio() {
     return () => window.clearInterval(timer);
   }, [secondsRemaining]);
 
+  useEffect(() => {
+    if (negotiationSeconds <= 0) return;
+    const timer = window.setInterval(() => setNegotiationSeconds((seconds) => Math.max(0, seconds - 1)), 1_000);
+    return () => window.clearInterval(timer);
+  }, [negotiationSeconds]);
+
   function findMatches() {
     startTransition(async () => {
       const nextResult = await findAiMatches();
       setResult(nextResult);
       if (nextResult.status === "matches" || nextResult.status === "no_matches") setSecondsRemaining(nextResult.cooldownSeconds);
       if (nextResult.status === "rate_limited" || nextResult.status === "api_limit") setSecondsRemaining(nextResult.retryAfterSeconds);
+    });
+  }
+
+  function exploreOptions(myListingId: string, candidateListingId: string) {
+    const key = `${myListingId}:${candidateListingId}`;
+    startNegotiation(async () => {
+      const response = await exploreSwapOptions(myListingId, candidateListingId);
+      setNegotiation({ key, response });
+      if (response.status === "options") setNegotiationSeconds(response.cooldownSeconds);
+      if (response.status === "rate_limited" || response.status === "api_limit") setNegotiationSeconds(response.retryAfterSeconds ?? 0);
     });
   }
 
@@ -44,8 +63,17 @@ export function AiMatchStudio() {
           {match.complementarySkills.length > 0 && <div className="ws-match-detail"><strong>Complementary skills</strong><ul>{match.complementarySkills.map((skill) => <li key={skill}>{skill}</li>)}</ul></div>}
           {match.potentialScopeConcerns.length > 0 && <div className="ws-match-detail"><strong>Scope to clarify</strong><ul>{match.potentialScopeConcerns.map((concern) => <li key={concern}>{concern}</li>)}</ul></div>}
           <div className="ws-match-next"><strong>Suggested next discussion</strong><p>{match.suggestedNextDiscussion}</p></div>
+          <div className="ws-negotiation-action"><button className="ws-btn ws-btn-secondary" type="button" onClick={() => exploreOptions(match.myListingId, match.candidateListingId)} disabled={isNegotiating || negotiationSeconds > 0}>{isNegotiating ? "Exploring options…" : negotiationSeconds > 0 ? `Options available in ${negotiationSeconds}s` : "Explore Swap Options"}</button><small>Nonbinding suggestions only — no agreement or payment is created.</small></div>
+          {negotiation?.key === `${match.myListingId}:${match.candidateListingId}` && <NegotiationOptions response={negotiation.response} />}
         </article>)}
       </div>}
     </section>
   );
+}
+
+function NegotiationOptions({ response }: { response: NegotiationResponse }) {
+  if (response.status !== "options") return <p className={response.status === "error" ? "ws-match-status ws-match-error" : "ws-match-status"} role={response.status === "error" ? "alert" : "status"}>{response.message}</p>;
+  const payerText = response.payer === "none" ? "No cash balance suggested" : response.payer === "you" ? "You would pay the community member" : "The community member would pay you";
+  const options = [["A. Cash Balance", response.cashBalance], ["B. Scope Balance", response.scopeBalance], ["C. Pure Barter", response.pureBarter]] as const;
+  return <section className="ws-negotiation-options" aria-label="Nonbinding AI swap suggestions"><p className="ws-negotiation-note">Nonbinding AI suggestions. Service values are estimates, not agreed amounts.</p><div className="ws-negotiation-values"><span><small>{response.myOffer}</small><strong>${response.myValue}</strong></span><span><small>{response.candidateOffer}</small><strong>${response.candidateValue}</strong></span><span><small>Cash difference</small><strong>${response.cashDifference}</strong><em>{payerText}</em></span></div>{options.map(([title, option]) => <article className="ws-negotiation-option" key={title}><strong>{title}</strong><p>{option.reasoning}</p>{option.scopeAssumptions.length > 0 && <small><b>Scope assumptions:</b> {option.scopeAssumptions.join(" · ")}</small>}{option.concerns.length > 0 && <small><b>Concerns:</b> {option.concerns.join(" · ")}</small>}</article>)}</section>;
 }
