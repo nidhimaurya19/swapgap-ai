@@ -1,9 +1,13 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { exploreSwapOptions, findAiMatches, type MatchResponse, type NegotiationResponse } from "./match-actions";
+import { exploreSwapOptions, findAiMatches, type AiMatch, type MatchResponse, type NegotiationResponse } from "./match-actions";
 
-export function AiMatchStudio() {
+type AiMatchStudioProps = {
+  onProposeSwap?: (match: AiMatch) => void;
+};
+
+export function AiMatchStudio({ onProposeSwap }: AiMatchStudioProps) {
   const [result, setResult] = useState<MatchResponse | null>(null);
   const [isPending, startTransition] = useTransition();
   const [secondsRemaining, setSecondsRemaining] = useState(0);
@@ -63,17 +67,68 @@ export function AiMatchStudio() {
           {match.complementarySkills.length > 0 && <div className="ws-match-detail"><strong>Complementary skills</strong><ul>{match.complementarySkills.map((skill) => <li key={skill}>{skill}</li>)}</ul></div>}
           {match.potentialScopeConcerns.length > 0 && <div className="ws-match-detail"><strong>Scope to clarify</strong><ul>{match.potentialScopeConcerns.map((concern) => <li key={concern}>{concern}</li>)}</ul></div>}
           <div className="ws-match-next"><strong>Suggested next discussion</strong><p>{match.suggestedNextDiscussion}</p></div>
-          <div className="ws-negotiation-action"><button className="ws-btn ws-btn-secondary" type="button" onClick={() => exploreOptions(match.myListingId, match.candidateListingId)} disabled={isNegotiating || negotiationSeconds > 0}>{isNegotiating ? "Exploring options…" : negotiationSeconds > 0 ? `Options available in ${negotiationSeconds}s` : "Explore Swap Options"}</button><small>Nonbinding suggestions only — no agreement or payment is created.</small></div>
-          {negotiation?.key === `${match.myListingId}:${match.candidateListingId}` && <NegotiationOptions response={negotiation.response} />}
+          <div className="ws-negotiation-action">
+            <div className="ws-match-action-btns">
+              <button className="ws-btn ws-btn-secondary" type="button" onClick={() => exploreOptions(match.myListingId, match.candidateListingId)} disabled={isNegotiating || negotiationSeconds > 0}>
+                {isNegotiating ? "Exploring options…" : negotiationSeconds > 0 ? `Options available in ${negotiationSeconds}s` : "Explore Swap Options"}
+              </button>
+              {onProposeSwap && (
+                <button className="ws-btn ws-btn-lime" type="button" onClick={() => onProposeSwap(match)}>
+                  <span aria-hidden="true">✦</span> Create Swap Proposal
+                </button>
+              )}
+            </div>
+            <small>Nonbinding suggestions only — no agreement or payment is created until mutually approved.</small>
+          </div>
+          {negotiation?.key === `${match.myListingId}:${match.candidateListingId}` && (
+            <NegotiationOptions
+              response={negotiation.response}
+              onProposeSwap={onProposeSwap ? () => onProposeSwap(match) : undefined}
+            />
+          )}
         </article>)}
       </div>}
     </section>
   );
 }
 
-function NegotiationOptions({ response }: { response: NegotiationResponse }) {
+function NegotiationOptions({
+  response,
+  onProposeSwap,
+}: {
+  response: NegotiationResponse;
+  onProposeSwap?: () => void;
+}) {
   if (response.status !== "options") return <p className={response.status === "error" ? "ws-match-status ws-match-error" : "ws-match-status"} role={response.status === "error" ? "alert" : "status"}>{response.message}</p>;
   const payerText = response.payer === "none" ? "No cash balance suggested" : response.payer === "you" ? "You would pay the community member" : "The community member would pay you";
   const options = [["A. Cash Balance", response.cashBalance], ["B. Scope Balance", response.scopeBalance], ["C. Pure Barter", response.pureBarter]] as const;
-  return <section className="ws-negotiation-options" aria-label="Nonbinding AI swap suggestions"><p className="ws-negotiation-note">Nonbinding AI suggestions. Service values are estimates, not agreed amounts.</p><div className="ws-negotiation-values"><span><small>{response.myOffer}</small><strong>${response.myValue}</strong></span><span><small>{response.candidateOffer}</small><strong>${response.candidateValue}</strong></span><span><small>Cash difference</small><strong>${response.cashDifference}</strong><em>{payerText}</em></span></div>{options.map(([title, option]) => <article className="ws-negotiation-option" key={title}><strong>{title}</strong><p>{option.reasoning}</p>{option.scopeAssumptions.length > 0 && <small><b>Scope assumptions:</b> {option.scopeAssumptions.join(" · ")}</small>}{option.concerns.length > 0 && <small><b>Concerns:</b> {option.concerns.join(" · ")}</small>}</article>)}</section>;
+  return (
+    <section className="ws-negotiation-options" aria-label="Nonbinding AI swap suggestions">
+      <p className="ws-negotiation-note">Nonbinding AI suggestions. Service values are estimates, not agreed amounts.</p>
+      <div className="ws-negotiation-values">
+        <span><small>{response.myOffer}</small><strong>${response.myValue}</strong></span>
+        <span><small>{response.candidateOffer}</small><strong>${response.candidateValue}</strong></span>
+        <span><small>Cash difference</small><strong>${response.cashDifference}</strong><em>{payerText}</em></span>
+      </div>
+      {options.map(([title, option]) => (
+        <article className="ws-negotiation-option" key={title}>
+          <strong>{title}</strong>
+          <p>{option.reasoning}</p>
+          {option.scopeAssumptions.length > 0 && <small><b>Scope assumptions:</b> {option.scopeAssumptions.join(" · ")}</small>}
+          {option.concerns.length > 0 && <small><b>Concerns:</b> {option.concerns.join(" · ")}</small>}
+        </article>
+      ))}
+      {onProposeSwap && (
+        <div className="ws-negotiation-create-bar">
+          <div>
+            <strong>Ready to formalize an agreement?</strong>
+            <p>Customize specific deliverables and values into a verifiable bilateral proposal.</p>
+          </div>
+          <button className="ws-btn ws-btn-lime" type="button" onClick={onProposeSwap}>
+            <span aria-hidden="true">✦</span> Create Swap Proposal
+          </button>
+        </div>
+      )}
+    </section>
+  );
 }

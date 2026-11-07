@@ -11,7 +11,7 @@ const recentNegotiations = new Map<string, number>();
 type ListingRow = { id: string; owner_id: string; offer: string; need: string; description: string; category: string };
 type CandidatePair = { mine: ListingRow; candidate: ListingRow; score: number };
 
-type AiMatch = {
+export type AiMatch = {
   myListingId: string;
   candidateListingId: string;
   myOffer: string;
