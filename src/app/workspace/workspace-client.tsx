@@ -8,7 +8,7 @@ import { LogoutButton } from "../logout-button";
 import { AiMatchStudio } from "./ai-match-studio";
 import { ProposalModal } from "./proposal-modal";
 import { SwapsView } from "./swaps-view";
-import { parseAgreement, type NormalizedSwapAgreement, type SkillCategory } from "./swap-types";
+import { parseAgreement, type NormalizedSwapAgreement, type SkillCategory, type SwapPaymentRecord } from "./swap-types";
 import type { AiMatch } from "./match-actions";
 
 type SkillListing = {
@@ -89,6 +89,32 @@ export default function WorkspaceClient() {
     candidateOwnerName?: string;
   } | null>(null);
 
+  const [view, setView] = useState<View>(() => {
+    if (typeof window !== "undefined") {
+      const p = new URLSearchParams(window.location.search);
+      if (p.get("paypal_action")) return "swaps";
+    }
+    return "overview";
+  });
+  const [query, setQuery] = useState("");
+  const [category, setCategory] = useState("All skills");
+  const [onlyMine, setOnlyMine] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [notice, setNotice] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const p = new URLSearchParams(window.location.search);
+      const action = p.get("paypal_action");
+      if (action === "return") {
+        return "Verifying PayPal Sandbox transaction with server...";
+      }
+      if (action === "cancel") {
+        return "PayPal Sandbox checkout was cancelled. You can retry payment when ready.";
+      }
+    }
+    return "";
+  });
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
   const listings = useMemo(() => [...remoteListings, ...SAMPLE_LISTINGS], [remoteListings]);
   const ownListings = useMemo(() => remoteListings.filter((item) => item.isMine), [remoteListings]);
 
@@ -136,7 +162,24 @@ export default function WorkspaceClient() {
 
       const profilesMap = new Map((profilesData ?? []).map((p) => [p.id, p.display_name]));
 
-      const parsed = rows.map((r) => parseAgreement(r, targetUid, listingsMap, profilesMap));
+      const agreementIds = rows.map((r) => String(r.id)).filter(Boolean);
+      let paymentsMap = new Map<string, SwapPaymentRecord>();
+      if (agreementIds.length > 0) {
+        try {
+          const { data: paymentsData } = await supabase
+            .from("swap_payments")
+            .select("*")
+            .in("agreement_id", agreementIds);
+
+          if (paymentsData) {
+            paymentsMap = new Map((paymentsData as SwapPaymentRecord[]).map((p) => [p.agreement_id, p]));
+          }
+        } catch (pErr) {
+          console.warn("[SwapGap] swap_payments load warning:", pErr);
+        }
+      }
+
+      const parsed = rows.map((r) => parseAgreement(r, targetUid, listingsMap, profilesMap, paymentsMap));
       setAgreements(parsed);
       setIsLoadingSwaps(false);
     } catch (err) {
@@ -203,13 +246,40 @@ export default function WorkspaceClient() {
     return () => { mounted = false; };
   }, [loadAgreements]);
 
-  const [view, setView] = useState<View>("overview");
-  const [query, setQuery] = useState("");
-  const [category, setCategory] = useState("All skills");
-  const [onlyMine, setOnlyMine] = useState(false);
-  const [showForm, setShowForm] = useState(false);
-  const [notice, setNotice] = useState("");
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  // Handle return or cancel redirects from PayPal Sandbox
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const action = params.get("paypal_action");
+    const agreementId = params.get("agreement_id");
+    const token = params.get("token"); // PayPal order ID
+
+    if (action === "return" && agreementId && token) {
+      // Clear URL parameters immediately to prevent repeated triggers on reload
+      window.history.replaceState({}, "", window.location.pathname);
+
+      fetch("/api/paypal/capture-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agreementId, orderId: token }),
+      })
+        .then((res) => res.json())
+        .then((data: { success?: boolean; amount?: number; error?: string }) => {
+          if (!data.success) {
+            throw new Error(data.error || "Capture verification failed.");
+          }
+          setNotice(`✓ PayPal Sandbox payment of $${data.amount} USD was successfully verified and completed!`);
+          void loadAgreements();
+        })
+        .catch((err: unknown) => {
+          console.error("[PayPal Return] Capture failed:", err);
+          setNotice(`PayPal payment notice: ${err instanceof Error ? err.message : String(err)}`);
+          void loadAgreements();
+        });
+    } else if (action === "cancel") {
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [loadAgreements]);
 
   const results = useMemo(() => listings.filter((item) => {
     if (onlyMine && !item.isMine) return false;

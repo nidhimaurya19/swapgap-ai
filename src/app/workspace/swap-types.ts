@@ -1,5 +1,17 @@
 export type SkillCategory = "Design" | "Development" | "Writing" | "Marketing" | "Video" | "Business";
 
+export type SwapPaymentRecord = {
+  agreement_id: string;
+  payer_id: string;
+  amount_usd: number;
+  currency: string;
+  paypal_order_id: string | null;
+  paypal_capture_id: string | null;
+  status: "pending" | "order_created" | "completed" | "failed";
+  created_at?: string;
+  updated_at?: string;
+};
+
 export type NormalizedSwapAgreement = {
   id: string;
   listing_a_id: string;
@@ -26,6 +38,7 @@ export type NormalizedSwapAgreement = {
   partnerApproval: boolean;
   created_at?: string;
   updated_at?: string;
+  payment?: SwapPaymentRecord | null;
 };
 
 export type TopUpCalculation = {
@@ -90,7 +103,8 @@ export function parseAgreement(
   row: Record<string, unknown>,
   currentUserId: string,
   listingsMap: Map<string, { id: string; owner_id: string; offer: string; need: string; description: string; value: number }>,
-  profilesMap: Map<string, string>
+  profilesMap: Map<string, string>,
+  paymentsMap?: Map<string, SwapPaymentRecord>
 ): NormalizedSwapAgreement {
   const id = String(row.id || "");
   const listing_a_id = String(row.listing_a_id || "");
@@ -145,6 +159,8 @@ export function parseAgreement(
   const offerA = listingA?.offer || (row.offer_a ? String(row.offer_a) : "Offered Service A");
   const offerB = listingB?.offer || (row.offer_b ? String(row.offer_b) : "Offered Service B");
 
+  const payment = paymentsMap?.get(id) || null;
+
   return {
     id,
     listing_a_id,
@@ -171,5 +187,6 @@ export function parseAgreement(
     partnerApproval,
     created_at: row.created_at ? String(row.created_at) : undefined,
     updated_at: row.updated_at ? String(row.updated_at) : undefined,
+    payment,
   };
 }
