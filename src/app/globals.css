@@ -200,3 +200,14 @@ h1 em::after { position: absolute; right: 1%; bottom: -7px; left: 3%; height: 8p
 .matching .bento-kicker { color: var(--sg-matching-network); }
 .matching .mini-network { color: var(--sg-matching-network); }
 .matching .mini-network i { border-color: var(--sg-highlight); background: var(--sg-matching-node); }
+
+/* SwapGap mobile workspace CTA */
+@media (max-width: 680px) {
+  .mobile-menu > div { width: min(260px, calc(100vw - 32px)); }
+  .mobile-menu a.mobile-workspace-cta {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 7px; padding: 12px 14px; border-radius: 999px;
+    background: #d8fb75; color: #112521; font-weight: 800;
+  }
+  .mobile-menu a.mobile-workspace-cta:hover { background: #c7ef69; color: #112521; }
+}

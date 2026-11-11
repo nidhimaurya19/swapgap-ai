@@ -24,7 +24,8 @@ export default function Home() {
           <div>
             <ThemeToggle />
             <a href="#how-it-works">How it works</a><a href="#why-swapgap">Why SwapGap</a><a href="#example-swap">Example swap</a>
-          </div>
+                    <a className="mobile-workspace-cta" href="/workspace">Explore SwapGap →</a>
+        </div>
         </details>
       </nav>
 
